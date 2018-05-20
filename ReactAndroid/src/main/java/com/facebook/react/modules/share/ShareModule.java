@@ -81,4 +81,52 @@ public class ShareModule extends ReactContextBaseJavaModule {
       promise.reject(ERROR_UNABLE_TO_OPEN_DIALOG, "Failed to open share dialog");
     }
   }
+
+  /**
+   * Open a chooser dialog to send image content to other apps (along with text for some Android apps).
+   *
+   * Refer http://developer.android.com/intl/ko/training/sharing/send.html
+   *
+   * @param content the data to send
+   * @param dialogTitle the title of the chooser dialog
+   */
+  @ReactMethod
+  public void shareImage(ReadableMap content, String dialogTitle, Promise promise) {
+    if (content == null) {
+      promise.reject(ERROR_INVALID_CONTENT, "Content cannot be null");
+      return;
+    }
+
+    try {
+      Intent intent = new Intent(Intent.ACTION_SEND);
+      intent.setTypeAndNormalize("text/plain");
+
+      if (content.hasKey("title")) {
+        intent.putExtra(Intent.EXTRA_SUBJECT, content.getString("title"));
+      }
+
+      if (content.hasKey("message")) {
+        intent.putExtra(Intent.EXTRA_TEXT, content.getString("message"));
+      }
+
+      if (content.hasKey("url")) {
+        intent.putExtra(Intent.EXTRA_STREAM, content.getString("url"));
+      }
+
+      Intent chooser = Intent.createChooser(intent, dialogTitle);
+      chooser.addCategory(Intent.CATEGORY_DEFAULT);
+
+      Activity currentActivity = getCurrentActivity();
+      if (currentActivity != null) {
+        currentActivity.startActivity(chooser);
+      } else {
+        getReactApplicationContext().startActivity(chooser);
+      }
+      WritableMap result = Arguments.createMap();
+      result.putString("action", ACTION_SHARED);
+      promise.resolve(result);
+    } catch (Exception e) {
+      promise.reject(ERROR_UNABLE_TO_OPEN_DIALOG, "Failed to open share dialog");
+    }
+  }
 }

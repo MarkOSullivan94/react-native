@@ -106,6 +106,83 @@ class Share {
   }
 
   /**
+   * Open a dialog to share image content.
+   *
+   * In iOS, Returns a Promise which will be invoked an object containing `action`, `activityType`.
+   * If the user dismissed the dialog, the Promise will still be resolved with action being `Share.dismissedAction`
+   * and all the other keys being undefined.
+   *
+   * In Android, Returns a Promise which always be resolved with action being `Share.sharedAction`.
+   * 
+   * Note: Text is not always shared for all apps.
+   *
+   * ### Content
+   *
+   *  - `message` - a message to share
+   *  - `title` - title of the message
+   *  - `url` - reference to image to share
+   *
+   *
+   * At least one of URL and message is required.
+   *
+   * ### Options
+   *
+   * #### iOS
+   *
+   *  - `subject` - a subject to share via email
+   *  - `excludedActivityTypes`
+   *  - `tintColor`
+   *
+   * #### Android
+   *
+   *  - `dialogTitle`
+   *
+   */
+  static shareImage(content: Content, options: Options = {}): Promise<Object> {
+    invariant(
+      typeof content === 'object' && content !== null,
+      'Content to share must be a valid object',
+    );
+    invariant(
+      typeof content.url === 'string',
+      'A valid URL is required to share an Image',
+    );
+    invariant(
+      typeof options === 'object' && options !== null,
+      'Options must be a valid object',
+    );
+
+    if (Platform.OS === 'android') {
+      invariant(
+        !content.title || typeof content.title === 'string',
+        'Invalid title: title should be a string.',
+      );
+      return ShareModule.shareImage(content, options.dialogTitle);
+    } else if (Platform.OS === 'ios') {
+      return new Promise((resolve, reject) => {
+        ActionSheetManager.showShareActionSheetWithOptions(
+          {...content, ...options, tintColor: processColor(options.tintColor)},
+          error => reject(error),
+          (success, activityType) => {
+            if (success) {
+              resolve({
+                action: 'sharedAction',
+                activityType: activityType,
+              });
+            } else {
+              resolve({
+                action: 'dismissedAction',
+              });
+            }
+          },
+        );
+      });
+    } else {
+      return Promise.reject(new Error('Unsupported platform'));
+    }
+  }
+
+  /**
    * The content was successfully shared.
    */
   static get sharedAction(): string {
